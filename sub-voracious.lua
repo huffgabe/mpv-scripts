@@ -30,15 +30,6 @@ function srt_time_to_seconds(time)
     return hours * 3600 + mins * 60 + secs + minor / 1000
 end
 
-function seconds_to_srt_time(time)
-    hours = math.floor(time / 3600)
-    mins = math.floor(time / 60) % 60
-    secs = math.floor(time % 60)
-    milliseconds = (time * 1000) % 1000
-
-    return string.format("%02d:%02d:%02d,%03d", hours, mins, secs, milliseconds)
-end
-
 function open_subtitles_file()
     local video_path = mp.get_property("path")
     local srt_filename = video_path:gsub('\\','/'):match("^(.+)/.+$") .. "/" .. mp.get_property("filename/no-ext")
