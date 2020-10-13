@@ -38,31 +38,31 @@ function open_subtitles_file()
         local f, err = io.open(srt_filename .. ext, "r")
         if f then return f end
     end
-	
+    
     return false
 end
 
 function read_subtitles()
     local f = open_subtitles_file()
     if not f then return false end
-	
+    
     local data = f:read("*all")
     data = string.gsub(data, "\r\n", "\n")
     f:close()
     
-	subs = {}
+    subs = {}
     subs_start = {}
     subs_end = {}
-	
-	--Added " -" to the pattern because lines can end with whitespace in some subtitle files.
+    
+    --Added " -" to the pattern because lines can end with whitespace in some subtitle files.
     for start_time, end_time, text in string.gmatch(data, "(%d%d:%d%d:%d%d,%d%d%d) %-%-> (%d%d:%d%d:%d%d,%d%d%d) -\n(.-)\n\n") do
-		if not filter_subtitles(text) then
+        if not filter_subtitles(text) then
             table.insert(subs, text)
             table.insert(subs_start, srt_time_to_seconds(start_time))
             table.insert(subs_end, srt_time_to_seconds(end_time))
         end
     end
-	
+    
     return true
 end
 
