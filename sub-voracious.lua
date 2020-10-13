@@ -36,10 +36,7 @@ function open_subtitles_file()
 
     for i, ext in ipairs(srt_file_extensions) do
         local f, err = io.open(srt_filename .. ext, "r")
-
-        if f then
-            return f
-        end
+        if f then return f end
     end
 	
     return false
@@ -47,10 +44,7 @@ end
 
 function read_subtitles()
     local f = open_subtitles_file()
-
-    if not f then
-        return false
-    end
+    if not f then return false end
 	
     local data = f:read("*all")
     data = string.gsub(data, "\r\n", "\n")
@@ -76,7 +70,6 @@ function filter_subtitles(text)
     if string.match(text, "^%[(.*)%]$") then
         return true
     end
-
     return false
 end
 
@@ -122,46 +115,42 @@ function update_sub_id()
 end
 
 function replay_sub_without_subtitles()
-    if sub_id ~= nil then
-        player_state = "replay"
-        mp.set_property("sub-visibility", "no")
-        mp.commandv("seek", subs_start[sub_id], "absolute+exact")
-    end
+    if sub_id == nil then return end
+    player_state = "replay"
+    mp.set_property("sub-visibility", "no")
+    mp.commandv("seek", subs_start[sub_id], "absolute+exact")
 end
 
 function on_seek()
-    if player_state ~= "replay" then
-        update_sub_id()
-    end
+    if player_state == "replay" then return end
+    update_sub_id()
 end
 
 function on_playback_restart()
-    if player_state == "replay" then
-        mp.set_property("pause", "no")
-        player_state = nil
-    end
+    if player_state ~= "replay" then return end
+    mp.set_property("pause", "no")
+    player_state = nil
 end
 
 function on_up_arrow_key()
-    if subtitle_mode == "Listening Practice" then
-        replay_sub_without_subtitles()
-    end
+    if subtitle_mode ~= "Listening Practice" then return end
+    replay_sub_without_subtitles()
 end
 
 function on_down_arrow_key()
-    if player_state == "pause" then
-        if mp.get_property("sub-visibility") == "no" then
-            mp.set_property("sub-visibility", "yes")
-        else
-            mp.set_property("sub-visibility", "no")
-            mp.set_property("pause", "no")
-            player_state = nil
+    if player_state ~= "pause" then return end
 
-            if sub_id < #subs then
-                sub_id = sub_id + 1
-            else
-                sub_id = nil
-            end
+    if mp.get_property("sub-visibility") == "no" then
+        mp.set_property("sub-visibility", "yes")
+    else
+        mp.set_property("sub-visibility", "no")
+        mp.set_property("pause", "no")
+        player_state = nil
+
+        if sub_id < #subs then
+            sub_id = sub_id + 1
+        else
+            sub_id = nil
         end
     end
 end
@@ -176,22 +165,21 @@ end
 
 function subtitle_mode_timer()
     local pos = mp.get_property_number("time-pos")
+    if pos == nil then return end
+    if sub_id == nil then return end
+    if mp.get_property("pause") == "yes" then return end
 
-    if pos ~= nil then
-        if sub_id ~= nil and mp.get_property("pause") ~= "yes" then
-            if subtitle_mode == "Listening Practice" and pos >= subs_end[sub_id] then
-                mp.set_property("pause", "yes")
-                player_state = "pause"
-            elseif subtitle_mode == "Reading Practice" then
-                if (pos + 0.25) >= subs_start[sub_id] then
-                    mp.set_property("sub-visibility", "yes")
-                end
+    if subtitle_mode == "Listening Practice" and pos >= subs_end[sub_id] then
+        mp.set_property("pause", "yes")
+        player_state = "pause"
+    elseif subtitle_mode == "Reading Practice" then
+        if (pos + 0.25) >= subs_start[sub_id] then
+            mp.set_property("sub-visibility", "yes")
+        end
 
-                if pos >= subs_start[sub_id] then
-                    mp.set_property("pause", "yes")
-                    player_state = "pause"
-                end
-            end
+        if pos >= subs_start[sub_id] then
+            mp.set_property("pause", "yes")
+            player_state = "pause"
         end
     end
 end
