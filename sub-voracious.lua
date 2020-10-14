@@ -54,7 +54,7 @@ function read_subtitles()
     subs_start = {}
     subs_end = {}
     
-    --Added " -" to the pattern because lines can end with whitespace in some subtitle files.
+    -- Added " -" to the pattern because lines can end with whitespace in some subtitle files.
     for start_time, end_time, text in string.gmatch(data, "(%d%d:%d%d:%d%d,%d%d%d) %-%-> (%d%d:%d%d:%d%d,%d%d%d) -\n(.-)\n\n") do
         if not filter_subtitles(text) then
             table.insert(subs, text)
@@ -136,20 +136,14 @@ function on_up_arrow_key()
 end
 
 function on_down_arrow_key()
-    if player_state ~= "pause" then return end
-
-    if mp.get_property("sub-visibility") == "no" then
+    -- TODO: replace player_state string with state "enum"
+    if player_state == "test" then
         mp.set_property("sub-visibility", "yes")
-    else
+        player_state = "view-answer"
+    elseif player_state == "view-answer" then
         mp.set_property("sub-visibility", "no")
         mp.set_property("pause", "no")
-        player_state = nil
-
-        if sub_id < #subs then
-            sub_id = sub_id + 1
-        else
-            sub_id = nil
-        end
+        player_state = "continue"
     end
 end
 
@@ -161,9 +155,11 @@ function on_space_key()
     end
 end
 
---TODO: rename this
+-- TODO: rename this
 function subtitle_mode_timer()
     if mp.get_property("pause") == "yes" then return end
+
+    if player_state == "continue" then return end
 
     local current_position = mp.get_property_number("time-pos")
     if current_position == nil then return end
@@ -175,7 +171,7 @@ function subtitle_mode_timer()
 
     if subtitle_mode == "Listening Practice" and current_position >= sub_end then
         mp.set_property("pause", "yes")
-        player_state = "pause"
+        player_state = "test"
     elseif subtitle_mode == "Reading Practice" then
         if (current_position + 0.25) >= subs_start[sub_id] then
             mp.set_property("sub-visibility", "yes")
@@ -199,6 +195,7 @@ function init_subtitle_mode()
 
     mp.add_key_binding("up", "up-arrow-key", on_up_arrow_key)
     mp.add_key_binding("down", "down-arrow-key", on_down_arrow_key)
+    -- TODO: rename to space-key
     mp.add_key_binding("space", "space-arrow-key", on_space_key)
 
     mp.register_event("seek", on_seek)
@@ -239,6 +236,12 @@ function toggle_subtitle_mode()
     end
 end
 
+function exit_continue_state()
+    if player_state == "continue" then
+        player_state = "play"
+    end
+end
+
 function init()
     local ret = read_subtitles()
 
@@ -249,6 +252,11 @@ function init()
     pad_subtitle_times()
 
     mp.add_key_binding("i", "toggle-interactive-mode", toggle_subtitle_mode)
+
+    -- After answering, enter a "continue" state until the next subtitle.
+    -- This prevents the player from stopping again at the same subtitle.
+    -- Observing sub-start would be preferable, but doesn't seem to work.
+    mp.observe_property("sub-text", "string", exit_continue_state)
 end
 
 mp.register_event("file-loaded", init)
