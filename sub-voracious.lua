@@ -10,110 +10,12 @@
 --         Then press ↓ to reveal the subs, and check if you heard correctly.
 --         Then press ↓ to unpause the video."
 --
---    - Reading Practice:
---        "At the start of each new subtitle, the video will pause automatically.
---         Try reading the sub. Then press ↓ to unpause the video, and hear it spoken.
---         Did you read it correctly?"
---
 ----------------------------------
 
 --------- Script Options ---------
-srt_file_extensions = {".srt", ".en.srt", ".eng.srt"}
-----------------------------------
-sub_pad_start = 0.25
-sub_pad_end = 0.2
-is_enabled = false
 ----------------------------------
 
-function srt_time_to_seconds(time)
-    major, minor = time:match("(%d%d:%d%d:%d%d),(%d%d%d)")
-    hours, mins, secs = major:match("(%d%d):(%d%d):(%d%d)")
-    return hours * 3600 + mins * 60 + secs + minor / 1000
-end
-
-function open_subtitles_file()
-    local video_path = mp.get_property("path")
-    local srt_filename = video_path:gsub('\\','/'):match("^(.+)/.+$") .. "/" .. mp.get_property("filename/no-ext")
-
-    for i, ext in ipairs(srt_file_extensions) do
-        local f, err = io.open(srt_filename .. ext, "r")
-        if f then return f end
-    end
-    
-    return false
-end
-
-function read_subtitles()
-    local f = open_subtitles_file()
-    if not f then return false end
-    
-    local data = f:read("*all")
-    data = string.gsub(data, "\r\n", "\n")
-    f:close()
-    
-    subs = {}
-    subs_start = {}
-    subs_end = {}
-    
-    -- Added " -" to the pattern because lines can end with whitespace in some subtitle files.
-    for start_time, end_time, text in string.gmatch(data, "(%d%d:%d%d:%d%d,%d%d%d) %-%-> (%d%d:%d%d:%d%d,%d%d%d) -\n(.-)\n\n") do
-        if not filter_subtitles(text) then
-            table.insert(subs, text)
-            table.insert(subs_start, srt_time_to_seconds(start_time))
-            table.insert(subs_end, srt_time_to_seconds(end_time))
-        end
-    end
-    
-    return true
-end
-
-function filter_subtitles(text)
-    if string.match(text, "^%[(.*)%]$") then return true end
-    return false
-end
-
-function pad_subtitle_times()
-    sub_id = 1
-
-    while sub_id < #subs do
-        if subs_start[sub_id + 1] - subs_end[sub_id] > sub_pad_end then
-            subs_end[sub_id] = subs_end[sub_id] + sub_pad_end
-        elseif subs_start[sub_id + 1] - subs_end[sub_id] > 0 then
-            subs_end[sub_id] = subs_end[sub_id] + (subs_start[sub_id + 1] - subs_end[sub_id]) / 2
-        end
-
-        if subs_start[sub_id + 1] - subs_end[sub_id] > sub_pad_start then
-            subs_start[sub_id + 1] = subs_start[sub_id + 1] - sub_pad_start
-        elseif subs_start[sub_id + 1] - subs_end[sub_id] > 0 then
-            subs_start[sub_id + 1] = subs_start[sub_id + 1] - (subs_start[sub_id + 1] - subs_end[sub_id]) / 2
-        end
-
-        sub_id = sub_id + 1
-    end
-
-    subs_start[1] = subs_start[1] - sub_pad_start
-    subs_end[#subs] = subs_end[#subs] + sub_pad_end
-end
-
-function update_sub_id()
-    local pos = mp.get_property_number("time-pos")
-
-    if pos == nil then
-        sub_id = nil
-        return
-    end
-
-    sub_id = 1
-    while sub_id < #subs and subs_end[sub_id] < pos do
-        sub_id = sub_id + 1
-    end
-
-    if subtitle_mode == "Reading Practice" and sub_id < #subs then
-        sub_id = sub_id + 1
-    end
-end
-
-function replay_sub_without_subtitles()
+function replay()
     if player_state == "replay" then return end
 
     sub_start = mp.get_property_number("sub-start")
@@ -122,11 +24,6 @@ function replay_sub_without_subtitles()
     mp.commandv("seek", sub_start, "absolute+exact")
     mp.set_property("sub-visibility", "no")
     player_state = "replay"
-end
-
-function on_seek()
-    if player_state == "replay" then return end
-    update_sub_id()
 end
 
 function on_playback_restart()
@@ -138,19 +35,10 @@ function on_playback_restart()
     -- time frame (without delay) for the specified delay (0.25 seconds).
     -- Waiting before switching back to the play state prevents pausing
     -- immediately after replaying.
-    mp.add_timeout(0.25, function() 
-        player_state = "play"
-        mp.osd_message("Play State")
-    end)
+    mp.add_timeout(0.25, function() player_state = "play" end)
 end
 
-function on_up_arrow_key()
-    if not is_enabled then return end
-    -- if subtitle_mode ~= "Listening Practice" then return end
-    replay_sub_without_subtitles()
-end
-
-function on_down_arrow_key()
+function confirm()
     -- TODO: replace player_state string with state "enum"
     if player_state == "test" then
         mp.set_property("sub-visibility", "yes")
@@ -162,11 +50,16 @@ function on_down_arrow_key()
     end
 end
 
-function on_space_key()
+function toggle_paused()
+    mp.set_property_bool("pause", not mp.get_property_bool("pause"))
+end
+
+-- Primarily intended for the Space key.
+function on_confirm_alt()
     if player_state == "test" or player_state == "view-answer" then
-        on_down_arrow_key()
+        confirm()
     else
-        mp.set_property_bool("pause", not mp.get_property_bool("pause"))
+        toggle_paused()
     end
 end
 
@@ -183,8 +76,6 @@ function subtitle_mode_timer()
     local sub_end = mp.get_property_number("sub-end")
     if sub_end == nil then return end
 
-    if sub_id == nil then return end
-
     if current_position >= sub_end then
         mp.set_property("pause", "yes")
         player_state = "test"
@@ -192,32 +83,27 @@ function subtitle_mode_timer()
 end
 
 function init_subtitle_mode()
-    default_sub_visibility = mp.get_property("sub-visibility")
+    original_sub_visibility = mp.get_property("sub-visibility")
     mp.set_property("sub-visibility", "no")
 
     timer = mp.add_periodic_timer(0.05, subtitle_mode_timer)
 
-    update_sub_id()
+    mp.add_key_binding("up", "replay", replay)
+    mp.add_key_binding("down", "confirm", confirm)
+    mp.add_key_binding("space", "confirm-alt", on_confirm_alt)
 
-    -- TODO: rename these key bindings
-    mp.add_key_binding("up", "up-arrow-key", on_up_arrow_key)
-    mp.add_key_binding("down", "down-arrow-key", on_down_arrow_key)
-    mp.add_key_binding("space", "space-arrow-key", on_space_key)
-
-    mp.register_event("seek", on_seek)
     mp.register_event("playback-restart", on_playback_restart)
 end
 
 function release_subtitle_mode()
-    mp.set_property("sub-visibility", default_sub_visibility)
+    mp.set_property("sub-visibility", original_sub_visibility)
 
     timer:kill()
 
-    mp.remove_key_binding("up-arrow-key")
-    mp.remove_key_binding("down-arrow-key")
-    mp.remove_key_binding("space-arrow-key")
+    mp.remove_key_binding("replay")
+    mp.remove_key_binding("confirm")
+    mp.remove_key_binding("confirm-alt")
 
-    mp.unregister_event(on_seek)
     mp.unregister_event(on_playback_restart)
 end
 
@@ -225,25 +111,20 @@ function toggle_enabled()
     if is_enabled == false then
         is_enabled = true
         mp.set_property("sub-delay", 0.25)
-        mp.osd_message("Listening practice enabled")
         init_subtitle_mode()
+
+        mp.osd_message("Listening practice enabled")
     else
         is_enabled = false
         mp.set_property("sub-delay", 0)
-        mp.osd_message("Listening practice disabled")
         release_subtitle_mode()
+
+        mp.osd_message("Listening practice disabled")
     end
 end
 
 function init()
-    local ret = read_subtitles()
-
-    if ret == false or #subs == 0 then
-        return
-    end
-
-    pad_subtitle_times()
-
+    is_enabled = false
     mp.add_key_binding("i", "toggle-enabled", toggle_enabled)
 
     -- After answering, enter a "continue" state until the next subtitle.

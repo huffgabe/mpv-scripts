@@ -10,17 +10,14 @@ Copies the currently displayed subtitle to the clipboard with Ctrl+C (Windows on
 * Find a better way to copy multi-line subtitles. Right now it just replaces the newlines with spaces.
 
 ## sub-voracious
-
 Pause after each subtitle line to test your listening. Original: [sub-voracious](https://github.com/kelciour/mpv-scripts/blob/master/sub-voracious.lua).
 
 ### Changes:
-* Some srt files have whitespace after the timestamps. The original script would fail to parse these.
+* Works with any subtitle file, including internal subtitles. External files can have any name and be from any location.
 * Removed reading practice mode.
 
 ### Todo:
 * Support changes to the sub delay.
-* Load sub files that don't have the same name as the video file.
-* Have a better way of stripping whitespace.
 * Add messages when e.g. subtitle fail to load instead of failing silently.
 * User-configurable subtitle padding.
 * Add prompts.
