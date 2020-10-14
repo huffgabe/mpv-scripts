@@ -13,7 +13,20 @@
 ----------------------------------
 
 --------- Script Options ---------
+-- Delay the subtitle by a small amount so it's still visible when paused at the end.
+visibility_delay = 0.1
+
+-- Play a little bit past the end of the subtitle to reduce voices getting cut off.
+end_padding = 0.2
+
+-- How often to check the position against the end of the subtitle.
+timer_rate = 0.05
 ----------------------------------
+
+-- The total subtitle delay that the script applies (in contrast to the user-set delay).
+function get_script_delay()
+    return visibility_delay + end_padding
+end
 
 function replay()
     if player_state == "replay" then return end
@@ -32,10 +45,13 @@ function on_playback_restart()
     mp.set_property("pause", "no")
 
     -- When you start replaying, you will be within the previous subtitle's
-    -- time frame (without delay) for the specified delay (0.25 seconds).
+    -- time frame (without delay) for the specified delay.
     -- Waiting before switching back to the play state prevents pausing
     -- immediately after replaying.
-    mp.add_timeout(0.25, function() player_state = "play" end)
+    mp.add_timeout(get_script_delay(), function() 
+        player_state = "play"
+        mp.osd_message("Play State")
+    end)
 end
 
 function confirm()
@@ -63,8 +79,7 @@ function on_confirm_alt()
     end
 end
 
--- TODO: rename this
-function subtitle_mode_timer()
+function check_position()
     if mp.get_property("pause") == "yes" then return end
 
     if player_state == "continue" then return end
@@ -76,7 +91,7 @@ function subtitle_mode_timer()
     local sub_end = mp.get_property_number("sub-end")
     if sub_end == nil then return end
 
-    if current_position >= sub_end then
+    if current_position >= sub_end + end_padding then
         mp.set_property("pause", "yes")
         player_state = "test"
     end
@@ -86,7 +101,7 @@ function init_subtitle_mode()
     original_sub_visibility = mp.get_property("sub-visibility")
     mp.set_property("sub-visibility", "no")
 
-    timer = mp.add_periodic_timer(0.05, subtitle_mode_timer)
+    timer = mp.add_periodic_timer(timer_rate, check_position)
 
     mp.add_key_binding("up", "replay", replay)
     mp.add_key_binding("down", "confirm", confirm)
@@ -110,7 +125,7 @@ end
 function toggle_enabled()
     if is_enabled == false then
         is_enabled = true
-        mp.set_property("sub-delay", 0.25)
+        mp.set_property("sub-delay", get_script_delay())
         init_subtitle_mode()
 
         mp.osd_message("Listening practice enabled")
