@@ -14,10 +14,9 @@ Pause after each subtitle line to test your listening. Original: [sub-voracious]
 
 ### Changes:
 * Works with any subtitle file, including internal subtitles. External files can have any name and be from any location.
+* Supports changes to the sub delay.
 * Removed reading practice mode.
 
 ### Todo:
-* Support changes to the sub delay.
-* Add messages when e.g. subtitle fail to load instead of failing silently.
 * User-configurable subtitle padding.
 * Add prompts.

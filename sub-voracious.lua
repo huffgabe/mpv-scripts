@@ -28,13 +28,22 @@ function get_script_delay()
     return visibility_delay + end_padding
 end
 
+-- The subtitle delay applied by the user.
+function get_user_delay()
+    return mp.get_property("sub-delay") - get_script_delay()
+end
+
+function get_user_delayed_time(sub_time)
+    return sub_time + get_user_delay()
+end
+
 function replay()
     if player_state == "replay" then return end
 
     sub_start = mp.get_property_number("sub-start")
     if sub_start == nil then return end
 
-    mp.commandv("seek", sub_start, "absolute+exact")
+    mp.commandv("seek", get_user_delayed_time(sub_start), "absolute+exact")
     mp.set_property("sub-visibility", "no")
     player_state = "replay"
 end
@@ -48,10 +57,7 @@ function on_playback_restart()
     -- time frame (without delay) for the specified delay.
     -- Waiting before switching back to the play state prevents pausing
     -- immediately after replaying.
-    mp.add_timeout(get_script_delay(), function() 
-        player_state = "play"
-        mp.osd_message("Play State")
-    end)
+    mp.add_timeout(get_script_delay(), function() player_state = "play" end)
 end
 
 function confirm()
@@ -91,7 +97,7 @@ function check_position()
     local sub_end = mp.get_property_number("sub-end")
     if sub_end == nil then return end
 
-    if current_position >= sub_end + end_padding then
+    if current_position >= get_user_delayed_time(sub_end) + end_padding then
         mp.set_property("pause", "yes")
         player_state = "test"
     end
@@ -125,13 +131,13 @@ end
 function toggle_enabled()
     if is_enabled == false then
         is_enabled = true
-        mp.set_property("sub-delay", get_script_delay())
+        mp.set_property("sub-delay", mp.get_property_number("sub-delay") + get_script_delay())
         init_subtitle_mode()
 
         mp.osd_message("Listening practice enabled")
     else
         is_enabled = false
-        mp.set_property("sub-delay", 0)
+        mp.set_property("sub-delay", get_user_delay())
         release_subtitle_mode()
 
         mp.osd_message("Listening practice disabled")
