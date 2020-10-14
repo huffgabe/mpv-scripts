@@ -67,13 +67,11 @@ function read_subtitles()
 end
 
 function filter_subtitles(text)
-    if string.match(text, "^%[(.*)%]$") then
-        return true
-    end
+    if string.match(text, "^%[(.*)%]$") then return true end
     return false
 end
 
-function adjust_subtitles()
+function pad_subtitle_times()
     sub_id = 1
 
     while sub_id < #subs do
@@ -163,21 +161,27 @@ function on_space_key()
     end
 end
 
+--TODO: rename this
 function subtitle_mode_timer()
-    local pos = mp.get_property_number("time-pos")
-    if pos == nil then return end
-    if sub_id == nil then return end
     if mp.get_property("pause") == "yes" then return end
 
-    if subtitle_mode == "Listening Practice" and pos >= subs_end[sub_id] then
+    local current_position = mp.get_property_number("time-pos")
+    if current_position == nil then return end
+
+    local sub_end = mp.get_property_number("sub-end")
+    if sub_end == nil then return end
+
+    if sub_id == nil then return end
+
+    if subtitle_mode == "Listening Practice" and current_position >= sub_end then
         mp.set_property("pause", "yes")
         player_state = "pause"
     elseif subtitle_mode == "Reading Practice" then
-        if (pos + 0.25) >= subs_start[sub_id] then
+        if (current_position + 0.25) >= subs_start[sub_id] then
             mp.set_property("sub-visibility", "yes")
         end
 
-        if pos >= subs_start[sub_id] then
+        if current_position >= subs_start[sub_id] then
             mp.set_property("pause", "yes")
             player_state = "pause"
         end
@@ -217,7 +221,7 @@ end
 function toggle_subtitle_mode()
     if subtitle_mode == nil then
         subtitle_mode = "Listening Practice"
-        mp.set_property("sub-delay", sub_pad_end + 0.25)
+        mp.set_property("sub-delay", 0.25)
     elseif subtitle_mode == "Listening Practice" then
         subtitle_mode = "Reading Practice"
         mp.set_property("sub-delay", -sub_pad_start - 0.25)
@@ -242,7 +246,7 @@ function init()
         return
     end
 
-    adjust_subtitles()
+    pad_subtitle_times()
 
     mp.add_key_binding("i", "toggle-interactive-mode", toggle_subtitle_mode)
 end

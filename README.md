@@ -20,5 +20,6 @@ Pause after each subtitle line to test your listening. Original: [sub-voracious]
 * Support changes to the sub delay.
 * Load sub files that don't have the same name as the video file.
 * Strip out reading comprehension mode.
-* Have a better way of removing whitespace.
+* Have a better way of stripping whitespace.
 * Add messages when e.g. subtitle fail to load instead of failing silently.
+* User-configurable subtitle padding.
