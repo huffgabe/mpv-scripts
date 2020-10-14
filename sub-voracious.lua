@@ -22,6 +22,7 @@ srt_file_extensions = {".srt", ".en.srt", ".eng.srt"}
 ----------------------------------
 sub_pad_start = 0.25
 sub_pad_end = 0.2
+is_enabled = false
 ----------------------------------
 
 function srt_time_to_seconds(time)
@@ -144,7 +145,8 @@ function on_playback_restart()
 end
 
 function on_up_arrow_key()
-    if subtitle_mode ~= "Listening Practice" then return end
+    if not is_enabled then return end
+    -- if subtitle_mode ~= "Listening Practice" then return end
     replay_sub_without_subtitles()
 end
 
@@ -183,24 +185,14 @@ function subtitle_mode_timer()
 
     if sub_id == nil then return end
 
-    if subtitle_mode == "Listening Practice" and current_position >= sub_end then
+    if current_position >= sub_end then
         mp.set_property("pause", "yes")
         player_state = "test"
-    elseif subtitle_mode == "Reading Practice" then
-        if (current_position + 0.25) >= subs_start[sub_id] then
-            mp.set_property("sub-visibility", "yes")
-        end
-
-        if current_position >= subs_start[sub_id] then
-            mp.set_property("pause", "yes")
-            player_state = "pause"
-        end
     end
 end
 
 function init_subtitle_mode()
     default_sub_visibility = mp.get_property("sub-visibility")
-
     mp.set_property("sub-visibility", "no")
 
     timer = mp.add_periodic_timer(0.05, subtitle_mode_timer)
@@ -229,23 +221,16 @@ function release_subtitle_mode()
     mp.unregister_event(on_playback_restart)
 end
 
-function toggle_subtitle_mode()
-    if subtitle_mode == nil then
-        subtitle_mode = "Listening Practice"
+function toggle_enabled()
+    if is_enabled == false then
+        is_enabled = true
         mp.set_property("sub-delay", 0.25)
-    elseif subtitle_mode == "Listening Practice" then
-        subtitle_mode = "Reading Practice"
-        mp.set_property("sub-delay", -sub_pad_start - 0.25)
-    else
-        mp.set_property("sub-delay", 0)
-        subtitle_mode = nil
-    end
-
-    if subtitle_mode ~= nil then
-        mp.osd_message("Subtitle Mode: " .. subtitle_mode)
+        mp.osd_message("Listening practice enabled")
         init_subtitle_mode()
     else
-        mp.osd_message("Subtitle Mode: " .. "Off")
+        is_enabled = false
+        mp.set_property("sub-delay", 0)
+        mp.osd_message("Listening practice disabled")
         release_subtitle_mode()
     end
 end
@@ -259,7 +244,7 @@ function init()
 
     pad_subtitle_times()
 
-    mp.add_key_binding("i", "toggle-interactive-mode", toggle_subtitle_mode)
+    mp.add_key_binding("i", "toggle-enabled", toggle_enabled)
 
     -- After answering, enter a "continue" state until the next subtitle.
     -- This prevents the player from stopping again at the same subtitle.

@@ -15,11 +15,11 @@ Pause after each subtitle line to test your listening. Original: [sub-voracious]
 
 ### Changes:
 * Some srt files have whitespace after the timestamps. The original script would fail to parse these.
+* Removed reading practice mode.
 
 ### Todo:
 * Support changes to the sub delay.
 * Load sub files that don't have the same name as the video file.
-* Strip out reading comprehension mode.
 * Have a better way of stripping whitespace.
 * Add messages when e.g. subtitle fail to load instead of failing silently.
 * User-configurable subtitle padding.
