@@ -113,10 +113,14 @@ function update_sub_id()
 end
 
 function replay_sub_without_subtitles()
-    if sub_id == nil then return end
-    player_state = "replay"
+    if player_state == "replay" then return end
+
+    sub_start = mp.get_property_number("sub-start")
+    if sub_start == nil then return end
+
+    mp.commandv("seek", sub_start, "absolute+exact")
     mp.set_property("sub-visibility", "no")
-    mp.commandv("seek", subs_start[sub_id], "absolute+exact")
+    player_state = "replay"
 end
 
 function on_seek()
@@ -126,8 +130,17 @@ end
 
 function on_playback_restart()
     if player_state ~= "replay" then return end
+
     mp.set_property("pause", "no")
-    player_state = nil
+
+    -- When you start replaying, you will be within the previous subtitle's
+    -- time frame (without delay) for the specified delay (0.25 seconds).
+    -- Waiting before switching back to the play state prevents pausing
+    -- immediately after replaying.
+    mp.add_timeout(0.25, function() 
+        player_state = "play"
+        mp.osd_message("Play State")
+    end)
 end
 
 function on_up_arrow_key()
@@ -160,6 +173,7 @@ function subtitle_mode_timer()
     if mp.get_property("pause") == "yes" then return end
 
     if player_state == "continue" then return end
+    if player_state == "replay" then return end
 
     local current_position = mp.get_property_number("time-pos")
     if current_position == nil then return end
@@ -236,12 +250,6 @@ function toggle_subtitle_mode()
     end
 end
 
-function exit_continue_state()
-    if player_state == "continue" then
-        player_state = "play"
-    end
-end
-
 function init()
     local ret = read_subtitles()
 
@@ -256,7 +264,11 @@ function init()
     -- After answering, enter a "continue" state until the next subtitle.
     -- This prevents the player from stopping again at the same subtitle.
     -- Observing sub-start would be preferable, but doesn't seem to work.
-    mp.observe_property("sub-text", "string", exit_continue_state)
+    mp.observe_property("sub-text", "string", function()
+        if player_state == "continue" then
+            player_state = "play"
+        end
+    end)
 end
 
 mp.register_event("file-loaded", init)
