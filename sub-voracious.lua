@@ -161,7 +161,7 @@ function on_down_arrow_key()
 end
 
 function on_space_key()
-    if player_state == "pause" then
+    if player_state == "test" or player_state == "view-answer" then
         on_down_arrow_key()
     else
         mp.set_property_bool("pause", not mp.get_property_bool("pause"))
@@ -207,9 +207,9 @@ function init_subtitle_mode()
 
     update_sub_id()
 
+    -- TODO: rename these key bindings
     mp.add_key_binding("up", "up-arrow-key", on_up_arrow_key)
     mp.add_key_binding("down", "down-arrow-key", on_down_arrow_key)
-    -- TODO: rename to space-key
     mp.add_key_binding("space", "space-arrow-key", on_space_key)
 
     mp.register_event("seek", on_seek)

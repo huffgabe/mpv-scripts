@@ -23,3 +23,4 @@ Pause after each subtitle line to test your listening. Original: [sub-voracious]
 * Have a better way of stripping whitespace.
 * Add messages when e.g. subtitle fail to load instead of failing silently.
 * User-configurable subtitle padding.
+* Add prompts.
