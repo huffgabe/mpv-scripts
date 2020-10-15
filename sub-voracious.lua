@@ -57,15 +57,19 @@ function replay()
 end
 
 function on_playback_restart()
-    if current_state ~= States.REPLAY then return end
+    if current_state == States.TEST or current_state == States.VIEW_ANSWER then
+        mp.set_property("pause", "no")
+        mp.set_property("sub-visibility", "no")
+        current_state = States.PLAY
+    elseif current_state == States.REPLAY then
+        mp.set_property("pause", "no")
 
-    mp.set_property("pause", "no")
-
-    -- When you start replaying, you will be within the previous subtitle's
-    -- time frame (without delay) for the specified delay.
-    -- Waiting before switching back to the play state prevents pausing
-    -- immediately after replaying.
-    mp.add_timeout(get_script_delay(), function() current_state = States.PLAY end)
+        -- When you start replaying, you will be within the previous subtitle's
+        -- time frame (without delay) for the specified delay.
+        -- Waiting before switching back to the play state prevents pausing
+        -- immediately after replaying.
+        mp.add_timeout(get_script_delay(), function() current_state = States.PLAY end)
+    end
 end
 
 function confirm()
@@ -114,6 +118,8 @@ function init_subtitle_mode()
     original_sub_visibility = mp.get_property("sub-visibility")
     mp.set_property("sub-visibility", "no")
 
+    mp.set_property("sub-delay", mp.get_property_number("sub-delay") + get_script_delay())
+
     timer = mp.add_periodic_timer(timer_rate, check_position)
 
     mp.add_key_binding("up", "replay", replay)
@@ -121,10 +127,15 @@ function init_subtitle_mode()
     mp.add_key_binding("space", "confirm-alt", on_confirm_alt)
 
     mp.register_event("playback-restart", on_playback_restart)
+
+    is_enabled = true
+    mp.osd_message("Listening practice enabled")
 end
 
 function release_subtitle_mode()
     mp.set_property("sub-visibility", original_sub_visibility)
+
+    mp.set_property("sub-delay", get_user_delay())
 
     timer:kill()
 
@@ -133,21 +144,16 @@ function release_subtitle_mode()
     mp.remove_key_binding("confirm-alt")
 
     mp.unregister_event(on_playback_restart)
+
+    is_enabled = false
+    mp.osd_message("Listening practice disabled")
 end
 
 function toggle_enabled()
-    if is_enabled == false then
-        is_enabled = true
-        mp.set_property("sub-delay", mp.get_property_number("sub-delay") + get_script_delay())
+    if not is_enabled then
         init_subtitle_mode()
-
-        mp.osd_message("Listening practice enabled")
     else
-        is_enabled = false
-        mp.set_property("sub-delay", get_user_delay())
         release_subtitle_mode()
-
-        mp.osd_message("Listening practice disabled")
     end
 end
 
