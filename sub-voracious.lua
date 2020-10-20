@@ -31,6 +31,47 @@ States = {
     CONTINUE = 5
 }
 
+function change_to_play_state()
+    mp.set_property("sub-visibility", "no")
+    overlay:remove()
+    current_state = States.PLAY
+    mp.osd_message("PLAY STATE")
+end
+
+function change_to_test_state()
+    mp.set_property("pause", "yes")
+    mp.set_property("sub-visibility", "no")
+    overlay.data = test_overlay_data
+    overlay:update()
+    current_state = States.TEST
+    mp.osd_message("TEST STATE")
+end
+
+function change_to_view_answer_state()
+    mp.set_property("pause", "yes")
+    mp.set_property("sub-visibility", "yes")
+    overlay.data = view_answer_overlay_data
+    overlay:update()
+    current_state = States.VIEW_ANSWER
+    mp.osd_message("VIEW ANSWER STATE")
+end
+
+function change_to_replay_state()
+    mp.set_property("pause", "no")
+    mp.set_property("sub-visibility", "no")
+    overlay:remove()
+    current_state = States.REPLAY
+    mp.osd_message("REPLAY STATE")
+end
+
+function change_to_continue_state()
+    mp.set_property("pause", "no")
+    mp.set_property("sub-visibility", "no")
+    overlay:remove()
+    current_state = States.CONTINUE
+    mp.osd_message("CONTINUE STATE")
+end
+
 -- The total subtitle delay that the script applies (in contrast to the user-set delay).
 function get_script_delay()
     return visibility_delay + end_padding
@@ -52,41 +93,26 @@ function replay()
     if sub_start == nil then return end
 
     mp.commandv("seek", get_user_delayed_time(sub_start), "absolute+exact")
-    mp.set_property("sub-visibility", "no")
-    overlay.data = ""
-    overlay:remove()
-    current_state = States.REPLAY
+    change_to_replay_state()
 end
 
 function on_playback_restart()
     if current_state == States.TEST or current_state == States.VIEW_ANSWER then
-        mp.set_property("sub-visibility", "no")
-        overlay.data = ""
-        overlay:remove()
-        current_state = States.PLAY
+        change_to_play_state()
     elseif current_state == States.REPLAY then
-        mp.set_property("pause", "no")
-
         -- When you start replaying, you will be within the previous subtitle's
         -- time frame (without delay) for the specified delay.
         -- Waiting before switching back to the play state prevents pausing
         -- immediately after replaying.
-        mp.add_timeout(get_script_delay(), function() current_state = States.PLAY end)
+        mp.add_timeout(get_script_delay(), change_to_play_state)
     end
 end
 
 function confirm()
     if current_state == States.TEST then
-        mp.set_property("sub-visibility", "yes")
-        overlay.data = view_answer_overlay_data
-        overlay:update()
-        current_state = States.VIEW_ANSWER
+        change_to_view_answer_state()
     elseif current_state == States.VIEW_ANSWER then
-        mp.set_property("sub-visibility", "no")
-        mp.set_property("pause", "no")
-        overlay.data = ""
-        overlay:remove()
-        current_state = States.CONTINUE
+        change_to_continue_state()
     end
 end
 
@@ -116,10 +142,7 @@ function check_position()
     if sub_end == nil then return end
 
     if current_position >= get_user_delayed_time(sub_end) + end_padding then
-        mp.set_property("pause", "yes")
-        overlay.data = test_overlay_data
-        overlay:update()
-        current_state = States.TEST
+        change_to_test_state()
     end
 end
 
@@ -185,7 +208,7 @@ function init()
     -- Observing sub-start would be preferable, but doesn't seem to work.
     mp.observe_property("sub-text", "string", function()
         if current_state == States.CONTINUE then
-            current_state = States.PLAY
+            change_to_play_state()
         end
     end)
 end
