@@ -232,4 +232,4 @@ function init()
     end)
 end
 
-mp.register_event("file-loaded", init)
+init()
