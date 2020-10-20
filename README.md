@@ -12,7 +12,8 @@ Pause after each subtitle line to test your listening. Original: [sub-voracious]
 ### Changes
 * Works with any subtitle file, including internal subtitles. External files can have any name and be from any location.
 * Supports adjustments to the sub delay.
-* Removed reading practice mode.
+* Added overlay prompts.
+* Removed reading practice mode (might consider bringing it back).
 
 ### How to Use
 Load a video with subtitles. You can use a video's internal subtitles or load an external subtitle file.

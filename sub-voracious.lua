@@ -35,7 +35,6 @@ function change_to_play_state()
     mp.set_property("sub-visibility", "no")
     overlay:remove()
     current_state = States.PLAY
-    mp.osd_message("PLAY STATE")
 end
 
 function change_to_test_state()
@@ -44,7 +43,6 @@ function change_to_test_state()
     overlay.data = test_overlay_data
     overlay:update()
     current_state = States.TEST
-    mp.osd_message("TEST STATE")
 end
 
 function change_to_view_answer_state()
@@ -53,7 +51,6 @@ function change_to_view_answer_state()
     overlay.data = view_answer_overlay_data
     overlay:update()
     current_state = States.VIEW_ANSWER
-    mp.osd_message("VIEW ANSWER STATE")
 end
 
 function change_to_replay_state()
@@ -61,7 +58,6 @@ function change_to_replay_state()
     mp.set_property("sub-visibility", "no")
     overlay:remove()
     current_state = States.REPLAY
-    mp.osd_message("REPLAY STATE")
 end
 
 function change_to_continue_state()
@@ -69,7 +65,20 @@ function change_to_continue_state()
     mp.set_property("sub-visibility", "no")
     overlay:remove()
     current_state = States.CONTINUE
-    mp.osd_message("CONTINUE STATE")
+end
+
+function change_to_state(state)
+    if state == States.PLAY then
+        change_to_play_state()
+    elseif state == States.TEST then
+        change_to_test_state()
+    elseif state == States.VIEW_ANSWER then
+        change_to_view_answer_state()
+    elseif state == States.REPLAY then
+        change_to_replay_state()
+    elseif state == States.CONTINUE then
+        change_to_continue_state()
+    end
 end
 
 -- The total subtitle delay that the script applies (in contrast to the user-set delay).
@@ -146,9 +155,12 @@ function check_position()
     end
 end
 
+function position_did_not_change_since_disable()
+    return mp.get_property_number("time-pos") == previous_position
+end
+
 function init_subtitle_mode()
     original_sub_visibility = mp.get_property("sub-visibility")
-    mp.set_property("sub-visibility", "no")
 
     mp.set_property("sub-delay", mp.get_property_number("sub-delay") + get_script_delay())
 
@@ -160,7 +172,11 @@ function init_subtitle_mode()
 
     mp.register_event("playback-restart", on_playback_restart)
 
-    overlay:update()
+    if position_did_not_change_since_disable() then
+        change_to_state(current_state)
+    else
+        change_to_play_state()
+    end
 
     is_enabled = true
     mp.osd_message("Listening practice enabled")
@@ -181,6 +197,8 @@ function release_subtitle_mode()
 
     overlay:remove()
 
+    previous_position = mp.get_property_number("time-pos")
+
     is_enabled = false
     mp.osd_message("Listening practice disabled")
 end
@@ -196,6 +214,7 @@ end
 function init()
     is_enabled = false
     current_state = States.PLAY
+    previous_position = 0
 
     overlay = mp.create_osd_overlay("ass-events")
     test_overlay_data = "{\\an4}{\\fs30}Up: Replay line\\NDown/Space: Reveal subtitle"
