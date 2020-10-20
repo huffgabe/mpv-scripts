@@ -1,14 +1,16 @@
 -- Usage:
---    i - subtitle mode on/off
---    ↑, ↓ (Space) - mode specific shortcuts
+--    i - toggle listening practice mode
+--    Space - view subtitle/play next line
+--    r - replay line
+--    g - play next line without viewing subtitle
 -- Note:
 --    The script is inspired by voracious.app (https://github.com/rsimmons/voracious).
 --
 --    - Listening Practice:
 --        "Subtitles are initially hidden. At the end of each subtitle, the video will pause automatically.
---         Could you hear what was said? Press ↑ to replay, if necessary.
---         Then press ↓ to reveal the subs, and check if you heard correctly.
---         Then press ↓ to unpause the video."
+--         Could you hear what was said? Press r to replay, if necessary.
+--         Then press Space to reveal the subs, and check if you heard correctly.
+--         Then press Space to unpause the video."
 --
 ----------------------------------
 
@@ -117,22 +119,19 @@ function on_playback_restart()
     end
 end
 
-function confirm()
-    if current_state == States.TEST then
-        change_to_view_answer_state()
-    elseif current_state == States.VIEW_ANSWER then
-        change_to_continue_state()
-    end
+function skip()
+    change_to_continue_state()
 end
 
 function toggle_paused()
     mp.set_property_bool("pause", not mp.get_property_bool("pause"))
 end
 
--- Primarily intended for the Space key.
-function on_confirm_alt()
-    if current_state == States.TEST or current_state == States.VIEW_ANSWER then
-        confirm()
+function confirm()
+    if current_state == States.TEST then
+        change_to_view_answer_state()
+    elseif current_state == States.VIEW_ANSWER then
+        change_to_continue_state()
     else
         toggle_paused()
     end
@@ -166,9 +165,9 @@ function init_subtitle_mode()
 
     timer = mp.add_periodic_timer(timer_rate, check_position)
 
-    mp.add_key_binding("up", "replay", replay)
-    mp.add_key_binding("down", "confirm", confirm)
-    mp.add_key_binding("space", "confirm-alt", on_confirm_alt)
+    mp.add_key_binding("r", "replay", replay)
+    mp.add_key_binding("g", "skip", skip)
+    mp.add_key_binding("space", "confirm", confirm)
 
     mp.register_event("playback-restart", on_playback_restart)
 
@@ -190,8 +189,8 @@ function release_subtitle_mode()
     timer:kill()
 
     mp.remove_key_binding("replay")
+    mp.remove_key_binding("skip")
     mp.remove_key_binding("confirm")
-    mp.remove_key_binding("confirm-alt")
 
     mp.unregister_event(on_playback_restart)
 
@@ -217,8 +216,8 @@ function init()
     previous_position = 0
 
     overlay = mp.create_osd_overlay("ass-events")
-    test_overlay_data = "{\\an4}{\\fs30}Up: Replay line\\NDown/Space: Reveal subtitle"
-    view_answer_overlay_data = "{\\an4}{\\fs30}Up: Replay line\\NDown/Space: Play next line"
+    test_overlay_data = "{\\an4}{\\fs30}Space: Reveal subtitle\\Nr: Replay line\\Ng: Play next line"
+    view_answer_overlay_data = "{\\an4}{\\fs30}Space: Play next line\\Nr: Replay line\\Ng: Play next line"
 
     mp.add_key_binding("i", "toggle-enabled", toggle_enabled)
 
