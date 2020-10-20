@@ -53,13 +53,16 @@ function replay()
 
     mp.commandv("seek", get_user_delayed_time(sub_start), "absolute+exact")
     mp.set_property("sub-visibility", "no")
+    overlay.data = ""
+    overlay:remove()
     current_state = States.REPLAY
 end
 
 function on_playback_restart()
     if current_state == States.TEST or current_state == States.VIEW_ANSWER then
-        mp.set_property("pause", "no")
         mp.set_property("sub-visibility", "no")
+        overlay.data = ""
+        overlay:remove()
         current_state = States.PLAY
     elseif current_state == States.REPLAY then
         mp.set_property("pause", "no")
@@ -75,10 +78,14 @@ end
 function confirm()
     if current_state == States.TEST then
         mp.set_property("sub-visibility", "yes")
+        overlay.data = view_answer_overlay_data
+        overlay:update()
         current_state = States.VIEW_ANSWER
     elseif current_state == States.VIEW_ANSWER then
         mp.set_property("sub-visibility", "no")
         mp.set_property("pause", "no")
+        overlay.data = ""
+        overlay:remove()
         current_state = States.CONTINUE
     end
 end
@@ -110,6 +117,8 @@ function check_position()
 
     if current_position >= get_user_delayed_time(sub_end) + end_padding then
         mp.set_property("pause", "yes")
+        overlay.data = test_overlay_data
+        overlay:update()
         current_state = States.TEST
     end
 end
@@ -128,6 +137,8 @@ function init_subtitle_mode()
 
     mp.register_event("playback-restart", on_playback_restart)
 
+    overlay:update()
+
     is_enabled = true
     mp.osd_message("Listening practice enabled")
 end
@@ -145,6 +156,8 @@ function release_subtitle_mode()
 
     mp.unregister_event(on_playback_restart)
 
+    overlay:remove()
+
     is_enabled = false
     mp.osd_message("Listening practice disabled")
 end
@@ -160,6 +173,11 @@ end
 function init()
     is_enabled = false
     current_state = States.PLAY
+
+    overlay = mp.create_osd_overlay("ass-events")
+    test_overlay_data = "{\\an4}{\\fs30}Up: Replay line\\NDown/Space: Reveal subtitle"
+    view_answer_overlay_data = "{\\an4}{\\fs30}Up: Replay line\\NDown/Space: Play next line"
+
     mp.add_key_binding("i", "toggle-enabled", toggle_enabled)
 
     -- After answering, enter a "continue" state until the next subtitle.
